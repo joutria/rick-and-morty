@@ -1,7 +1,7 @@
 import "./App.css";
 import SearchBox from "./components/SearchBox";
 import LocationContainer from "./components/LocationContainer";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ResidentContainer from "./components/ResidentContainer";
 
 function App() {
@@ -16,9 +16,35 @@ function App() {
   // number of the page shown
   const [page, setPage] = useState(0);
 
-  // app to fetch info from the api
+  // error state
+  const [fetchError, setFetchError] = useState("");
+  const [notFound, setNotFound] = useState(false);
+
+  // app to fetch info from the api with error handling
   const fetcher = (url) => {
-    return fetch(url).then((response) => response.json());
+    return fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          if (response.status === 404) {
+            setNotFound(true);
+            setFetchError("");
+          } else {
+            setFetchError("Failed to fetch data from the Rick and Morty API. Please check your connection or try again later.");
+            setNotFound(false);
+          }
+          throw new Error(`API error: ${response.status}`);
+        }
+        setNotFound(false);
+        setFetchError("");
+        return response.json();
+      })
+      .catch((err) => {
+        // Only set fetchError if not a 404
+        if (!notFound && !fetchError) {
+          setFetchError("Failed to fetch data from the Rick and Morty API. Please check your connection or try again later.");
+        }
+        throw err;
+      });
   };
 
   // effect to get the list with the names of the different locations
@@ -50,9 +76,9 @@ function App() {
   }, [info]);
 
   // function to update page
-  const pageHandler = (value) => {
+  const pageHandler = useCallback((value) => {
     setPage(value);
-  };
+  }, []);
 
   // effect to randomly assign the initial location
   useEffect(() => {
@@ -67,43 +93,63 @@ function App() {
   return (
     <div className="App">
       <h1>Rick & Morty</h1>
-      <SearchBox
-        value={value}
-        setValue={setValue}
-        list={list}
-        fetcher={fetcher}
-        setInfo={setInfo}
-        setPage={setPage}
-      />
-      {info && <LocationContainer info={info} />}
-      <div>
-        {buttons &&
-          buttons.map((item, index) => (
-            <button
-              onClick={(e) => {
-                pageHandler(item);
-              }}
-              key={index}
-            >
-              {item}
-            </button>
-          ))}
-      </div>
-      <div className="residents">
-        {info && (
-          <>
-            {info.residents.map((item, index) => (
-              <ResidentContainer
-                key={index}
-                value={index}
-                resident={item}
-                fetcher={fetcher}
-                page={page}
-              />
-            ))}
-          </>
-        )}
-      </div>
+      {notFound ? (
+        <div className="no-residents-message">
+          <img src={process.env.PUBLIC_URL + '/rick-and-morty-portal.png'} alt="404 portal" className="no-residents-img" />
+          <div className="no-residents-text">404 - Location not found</div>
+        </div>
+      ) : (
+        <>
+          {fetchError && (
+            <div className="api-error-message">
+              {fetchError}
+            </div>
+          )}
+          <SearchBox
+            value={value}
+            setValue={setValue}
+            list={list}
+            fetcher={fetcher}
+            setInfo={setInfo}
+            setPage={setPage}
+          />
+          {info && <LocationContainer info={info} />}
+          <div className="pagination">
+            {buttons &&
+              buttons.map((item, index) => (
+                <button
+                  className={`page-btn${page === item ? " active" : ""}`}
+                  onClick={() => pageHandler(item)}
+                  key={index}
+                >
+                  {item}
+                </button>
+              ))}
+          </div>
+          <div className="residents">
+            {info && Array.isArray(info.residents) && (
+              info.residents.length === 0 ? (
+                <div className="no-residents-message">
+                  <img src={process.env.PUBLIC_URL + '/rick-and-morty-portal.png'} alt="No residents portal" className="no-residents-img" />
+                  <div className="no-residents-text">No residents in this place</div>
+                </div>
+              ) : (
+                <>
+                  {info.residents.map((item, index) => (
+                    <ResidentContainer
+                      key={index}
+                      value={index}
+                      resident={item}
+                      fetcher={fetcher}
+                      page={page}
+                    />
+                  ))}
+                </>
+              )
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

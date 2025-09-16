@@ -1,4 +1,5 @@
 import LocationInfo from "./LocationInfo";
+import { memo } from "react";
 
 function LocationContainer(props) {
   return (
@@ -9,4 +10,4 @@ function LocationContainer(props) {
   );
 }
 
-export default LocationContainer;
+export default memo(LocationContainer);

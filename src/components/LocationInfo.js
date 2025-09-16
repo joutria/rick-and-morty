@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 function LocationInfo(props) {
   return (
     <div className="LocationInfo">
@@ -9,4 +11,4 @@ function LocationInfo(props) {
   );
 }
 
-export default LocationInfo;
+export default memo(LocationInfo);
